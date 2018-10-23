@@ -57,6 +57,9 @@ void KWLControl::begin(Print& initTracer)
   add_sensors_.begin(initTracer);
   ntp_.begin(persistent_config_.getNetworkNTPServer());
   program_manager_.begin();
+#ifdef PLUGGIT_PRESSURE_SENSORS  
+  press_sensors_.begin(initTracer);
+#endif  
 
   // run error check loop every second, but give some time to initialize first
   control_timer_.runRepeated(8000000, 1000000);
@@ -205,6 +208,9 @@ bool KWLControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
     getFanControl().forceSend();
     getBypass().forceSend();
     getAdditionalSensors().forceSend();
+#ifdef PLUGGIT_PRESSURE_SENSORS      
+    getPressureSensors().forceSend();
+#endif
   } else if (topic == MQTTTopic::KwlDebugsetSchedulerGetvalues) {
     // send statistics for scheduler
     auto i1 = Scheduler::TaskPollingStats::begin();

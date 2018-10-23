@@ -36,6 +36,9 @@
 #ifndef NO_TFT 
 #include "TFT.h"
 #endif
+#ifdef PLUGGIT_PRESSURE_SENSORS
+#include "PressureSensors.h"
+#endif
 
 /*!
  * @brief Controller for the ventilation system.
@@ -92,6 +95,11 @@ public:
   /// Get additional sensor array (optional ones).
   AdditionalSensors& getAdditionalSensors() { return add_sensors_; }
 
+#ifdef PLUGGIT_PRESSURE_SENSORS
+  /// Get pressure sensor array (optional ones).
+  PressureSensors& getPressureSensors() { return press_sensors_; }
+#endif
+  
   /// Get fan controlling object.
   FanControl& getFanControl() { return fan_control_; }
 
@@ -159,6 +167,10 @@ private:
   TempSensors temp_sensors_;
   /// Additional sensors (humidity, CO2, VOC).
   AdditionalSensors add_sensors_;
+#ifdef PLUGGIT_PRESSURE_SENSORS  
+  /// Pressure sensors (from Pluggit).
+  PressureSensors press_sensors_;
+#endif  
   /// Fan control.
   FanControl fan_control_;
   /// Summer bypass object.
