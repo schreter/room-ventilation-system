@@ -87,9 +87,12 @@ void KWLControl::begin(Print& initTracer)
 
   // Setup fertig
   initTracer.println(F("Setup completed..."));
+#ifndef NO_TFT
+  // 4 Sekunden Pause für die TFT Anzeige, damit man sie auch lesen kann
+  delay(4000);
 
   tft_.begin(initTracer, *this);
-
+#endif
   DeadlockWatchdog::begin(&deadlockDetected, this);
 }
 
@@ -275,7 +278,9 @@ bool KWLControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
       Serial.flush();
       while (true) {}
     }
-  } else if (topic == MQTTTopic::CmdScreenshot) {
+  } 
+#ifndef NO_TFT  
+  else if (topic == MQTTTopic::CmdScreenshot) {
     IPAddress ip;
     uint16_t port = 4444;
     {
@@ -327,7 +332,9 @@ bool KWLControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
     int x, y;
     if (sscanf_P(s.c_str(), PSTR("%d,%d"), &x, &y) == 2)
       tft_.makeTouch(x, y);
-  } else {
+  } 
+#endif  
+  else {
     return false;
   }
   return true;
