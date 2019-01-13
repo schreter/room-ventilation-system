@@ -17,7 +17,7 @@ Die Drehzahlregelung der Lüftermotoren erfolgt durch PID-Regler. Dies sorgt daf
 Drehzahlen der Lüfter sicher erreicht werden. Die Leistungssteuerung des Vorheizregisters erfolgt
 ebenfalls durch einen PID-Regler.
 
-Differenzdrucksensoren werden bisher nicht berücksichtigt.
+Differenzdrucksensoren werden bisher nicht berücksichtigt. Die originalen Differenzdrucksensoren können bei entsprechender Konfiguration ausgelesen werden (siehe [Pluggit-Differenzdrucksensoren](#pluggit-differenzdrucksensoren)).
 
 Die Steuerung ist per LAN (W5100) erreichbar. Als Protokoll wird mqtt verwendet. Über mqtt liefert
 die Steuerung Temperaturen, Drehzahlen der Lüfter, Stellung der Bypassklappe, den Status der AntiFreeze
@@ -40,3 +40,13 @@ Um das Projekt zu bauen müssen folgende Voraussetzungen erfüllt sein:
   - Das Projekt bringt eigene Libraries mit. Diese müssen ebenfalls installiert
     werden, am einfachsten als symbolische Links. Der Skript link_libs.sh
     linkt die Libraries an die (hoffentlich) richtige Stelle.
+
+## Pluggit-Differenzdrucksensoren
+
+Die originalen Differenzdrucksensoren werden als analoge Eingänge ausgelesen, wenn in der Datei `UserConfig.h` der folgende Eintrag vorhanden ist:
+
+`#define PLUGGIT_PRESSURE_SENSORS`
+
+Die Sensordaten werden dann unter `pressure/sensor[1,2]/voltage` und `pressure/sensor[1,2]/pressure` per MQTT übertragen. Eine Berücksichtigung in der Regelung wie bei der Original-Software findet nicht statt.
+
+Die Analogeingänge werden derzeit direkt in `PressureSensors.h` mit den Variablen `PinPressureSensor1` und `PinPressureSensor2` konfiguriert.

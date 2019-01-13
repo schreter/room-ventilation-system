@@ -73,12 +73,15 @@ void setup()
 {
   Serial.begin(57600); // Serielle Ausgabe starten
 
+  #ifndef NO_TFT
   // *** TFT AUSGABE ***
   kwlControl.getTFT().setup();
 
   // Init tracer which prints to both TFT and Serial.
   static MultiPrint initTracer(Serial, kwlControl.getTFT().getTFTPrinter());
-
+  #else
+  static Print& initTracer = Serial;
+  #endif
   initTracer.println(F("Booting... "));
 
   kwlControl.begin(initTracer);

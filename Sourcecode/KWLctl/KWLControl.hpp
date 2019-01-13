@@ -33,7 +33,12 @@
 #include "ProgramManager.h"
 #include "SummerBypass.h"
 #include "AdditionalSensors.h"
+#ifndef NO_TFT 
 #include "TFT.h"
+#endif
+#ifdef PLUGGIT_PRESSURE_SENSORS
+#include "PressureSensors.h"
+#endif
 
 /*!
  * @brief Controller for the ventilation system.
@@ -90,6 +95,11 @@ public:
   /// Get additional sensor array (optional ones).
   AdditionalSensors& getAdditionalSensors() { return add_sensors_; }
 
+#ifdef PLUGGIT_PRESSURE_SENSORS
+  /// Get pressure sensor array (optional ones).
+  PressureSensors& getPressureSensors() { return press_sensors_; }
+#endif
+  
   /// Get fan controlling object.
   FanControl& getFanControl() { return fan_control_; }
 
@@ -105,8 +115,10 @@ public:
   /// Get NTP client.
   MicroNTP& getNTP() { return ntp_; }
 
+#ifndef NO_TFT 
   /// Get TFT controller.
   TFT& getTFT() { return tft_; }
+#endif
 
   /// Get set of ERROR_BIT_* bits to describe any error situations.
   unsigned getErrors() const { return errors_; }
@@ -158,6 +170,10 @@ private:
   TempSensors temp_sensors_;
   /// Additional sensors (humidity, CO2, VOC).
   AdditionalSensors add_sensors_;
+#ifdef PLUGGIT_PRESSURE_SENSORS  
+  /// Pressure sensors (from Pluggit).
+  PressureSensors press_sensors_;
+#endif  
   /// Fan control.
   FanControl fan_control_;
   /// Summer bypass object.
@@ -166,8 +182,10 @@ private:
   Antifreeze antifreeze_;
   /// Program manager to set daily/weekly programs.
   ProgramManager program_manager_;
+#ifndef NO_TFT 
   /// Display control.
   TFT tft_;
+#endif
   /// Task to send all scheduler infos reliably.
   PublishTask scheduler_publish_;
   /// Task to send errors.

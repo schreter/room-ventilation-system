@@ -107,6 +107,11 @@ namespace MQTTTopic
   constexpr auto KwlCO2Abluft               = makeFlashStringLiteral("abluft/co2");
   constexpr auto KwlVOCAbluft               = makeFlashStringLiteral("abluft/voc");
 
+  // Pluggit Drucksensoren 
+  constexpr auto KwlPressure1Voltage        = makeFlashStringLiteral("pressure/sensor1/voltage");
+  constexpr auto KwlPressure1Pressure       = makeFlashStringLiteral("pressure/sensor1/pressure");
+  constexpr auto KwlPressure2Voltage        = makeFlashStringLiteral("pressure/sensor2/voltage");
+  constexpr auto KwlPressure2Pressure       = makeFlashStringLiteral("pressure/sensor2/pressure");
 
   // Die folgenden Topics sind nur für die SW-Entwicklung, und schalten Debugausgaben per mqtt ein und aus
   constexpr auto KwlDebugsetFan1Getvalues   = makeFlashStringLiteral("/fan1/getvalues");
