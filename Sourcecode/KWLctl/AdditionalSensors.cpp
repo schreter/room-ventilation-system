@@ -22,9 +22,28 @@
 #include "KWLConfig.h"
 #include "MessageHandler.h"
 #include "MQTTTopic.hpp"
+#include "SDP8xx.h"
 
 #include <DHT.h>
 #include <DHT_U.h>
+#include <Wire.h>
+
+namespace
+{
+  /// Address of the I2C multiplexer.
+  static constexpr uint8_t TCAADDR = 0x70;
+
+  /// Select channel on I2C multiplexer.
+  static bool tcaselect(uint8_t chNum)
+  {
+    if (chNum > 3)
+      return false;
+    byte ctrl = 0x04 | (chNum & 0x7);
+    Wire.beginTransmission(TCAADDR);
+    Wire.write(ctrl);
+    return Wire.endTransmission() == 0;
+  }
+}
 
 // Definitionen für das Scheduling
 
@@ -34,11 +53,17 @@ static constexpr unsigned long INTERVAL_DHT_READ              = 10000000;
 static constexpr unsigned long INTERVAL_MHZ14_READ            = 10000000;
 /// Time between VOC sensor readings (1s).
 static constexpr unsigned long INTERVAL_TGS2600_READ          =  1000000;
+/// Time between pressure sensor readings (1s).
+static constexpr unsigned long INTERVAL_DP_READ               =  1000000;
 
 /// Minimum time between communicating DHT values.
 static constexpr unsigned long INTERVAL_MQTT_DHT              =  5000000;
 /// Maximum time between communicating DHT values.
 static constexpr unsigned long INTERVAL_MQTT_DHT_FORCE        = 300000000; // 5 * 60 * 1000; 5 Minuten
+/// Minimum time between communicating differential pressure values.
+static constexpr unsigned long INTERVAL_MQTT_DP               =  5000000;
+/// Maximum time between communicating differential pressure values.
+static constexpr unsigned long INTERVAL_MQTT_DP_FORCE         = 300000000; // 5 * 60 * 1000; 5 Minuten
 /// Minimum time between communicating CO2 values.
 static constexpr unsigned long INTERVAL_MQTT_MHZ14            = 60000000;
 /// Maximum time between communicating CO2 values.
@@ -51,6 +76,10 @@ static constexpr unsigned long INTERVAL_MQTT_TGS2600_FORCE    = 30000000;
 // DHT Sensoren
 static DHT_Unified dht1(KWLConfig::PinDHTSensor1, DHT22);
 static DHT_Unified dht2(KWLConfig::PinDHTSensor2, DHT22);
+
+// Differential pressure sensors (SDP8xx/SDP6xx on I2C)
+static SDP8xx dp1;
+static SDP8xx dp2;
 
 // TGS2600
 static constexpr float  TGS2600_DEFAULTPPM        = 10;           //default ppm of CO2 for calibration
@@ -125,17 +154,21 @@ static int calcSensor_VOC(int valr)
 
 
 AdditionalSensors::AdditionalSensors() :
+  MessageHandler(F("AdditionalSensors")),
   stats_(F("AdditionalSensors")),
   dht1_read_(stats_, &AdditionalSensors::readDHT1, *this),
   dht2_read_(stats_, &AdditionalSensors::readDHT2, *this),
   mhz14_read_(stats_, &AdditionalSensors::readMHZ14, *this),
   voc_read_(stats_, &AdditionalSensors::readVOC, *this),
+  dp_read_(stats_, &AdditionalSensors::readDP, *this),
   dht_send_task_(stats_, &AdditionalSensors::sendDHT, *this, false),
   dht_send_oversample_task_(stats_, &AdditionalSensors::sendDHT, *this, true),
   co2_send_task_(stats_, &AdditionalSensors::sendCO2, *this, false),
   co2_send_oversample_task_(stats_, &AdditionalSensors::sendCO2, *this, true),
   voc_send_task_(stats_, &AdditionalSensors::sendVOC, *this, false),
-  voc_send_oversample_task_(stats_, &AdditionalSensors::sendVOC, *this, true)
+  voc_send_oversample_task_(stats_, &AdditionalSensors::sendVOC, *this, true),
+  dp_send_task_(stats_, &AdditionalSensors::sendDP, *this, false),
+  dp_send_oversample_task_(stats_, &AdditionalSensors::sendDP, *this, true)
 {}
 
 bool AdditionalSensors::setupMHZ14()
@@ -280,6 +313,25 @@ void AdditionalSensors::readVOC()
   }
 }
 
+void AdditionalSensors::readDP()
+{
+  float temp1, temp2;
+  tcaselect(0);
+  dp1.read(dp1_, temp1);
+  tcaselect(1);
+  dp2.read(dp2_, temp2);
+  if (KWLConfig::serialDebugSensor) {
+    Serial.print(F("DP1 P="));
+    Serial.print(dp1_);
+    Serial.print(F(", T="));
+    Serial.print(temp1);
+    Serial.print(F("; DP2 P="));
+    Serial.print(dp1_);
+    Serial.print(F(", T="));
+    Serial.println(temp2);
+  }
+}
+
 void AdditionalSensors::begin(Print& initTracer)
 {
   initTracer.print(F("Initialisierung Sensoren:"));
@@ -319,7 +371,34 @@ void AdditionalSensors::begin(Print& initTracer)
     voc_send_oversample_task_.runRepeated(INTERVAL_MQTT_TGS2600 + 1000000, INTERVAL_MQTT_TGS2600_FORCE);
   }
 
-  if (!DHT1_available_ && !DHT2_available_ && !MHZ14_available_ && !TGS2600_available_) {
+  // Differential pressure sensors
+  if (tcaselect(0))
+  {
+    bool has_dp1 = dp1.begin();
+    tcaselect(1);
+    bool has_dp2 = dp2.begin();
+    if (has_dp1 && has_dp2)
+    {
+      initTracer.print(F(" DP"));
+      dp_read_.runRepeated(INTERVAL_DP_READ, INTERVAL_DP_READ);
+      dp_send_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP);
+      dp_send_oversample_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP_FORCE);
+    }
+    else if (has_dp1 || has_dp2)
+    {
+      if (has_dp1)
+        initTracer.print(F(" DP1 !DP2"));
+      else
+        initTracer.print(F(" !DP1 DP2"));
+    }
+    else
+    {
+      initTracer.print(F(" !DP"));
+    }
+  }
+
+  if (!DHT1_available_ && !DHT2_available_ && !MHZ14_available_ && !TGS2600_available_ &&
+      dp1.getType() == SDP8xx::type::invalid && dp2.getType() == SDP8xx::type::invalid) {
     initTracer.println(F(" keine Sensoren"));
   } else {
     initTracer.println();
@@ -334,6 +413,19 @@ void AdditionalSensors::forceSend() noexcept
     sendCO2(true);
   if (TGS2600_available_)
     sendVOC(true);
+  if (hasDP())
+    sendDP(true);
+}
+
+bool AdditionalSensors::hasDP() const noexcept
+{
+  return (dp1.getType() != SDP8xx::type::invalid && dp2.getType() != SDP8xx::type::invalid);
+}
+
+bool AdditionalSensors::updateDP() noexcept
+{
+  readDP();
+  return !isnanf(dp1_) && !isnanf(dp2_);
 }
 
 void AdditionalSensors::sendDHT(bool force) noexcept
@@ -396,4 +488,81 @@ void AdditionalSensors::sendVOC(bool force) noexcept
   publish_voc_.publish(MQTTTopic::KwlVOCAbluft, voc_, 1, KWLConfig::RetainAdditionalSensors);
   voc_send_task_.runRepeated(INTERVAL_MQTT_TGS2600);
   voc_send_oversample_task_.runRepeated(INTERVAL_MQTT_TGS2600_FORCE);
+}
+
+void AdditionalSensors::sendDP(bool force) noexcept
+{
+  if (!force && (isnanf(dp1_last_sent_) || isnanf(dp2_last_sent_)))
+    force = true;
+  if (!force && (abs(dp1_ - dp1_last_sent_) < 1) && (abs(dp2_ - dp2_last_sent_) < 1)) {
+    // not enough change
+    return;
+  }
+  dp1_last_sent_ = dp1_;
+  dp2_last_sent_ = dp2_;
+  uint8_t bitmap = 3;
+  publish_dp_.publish([this, bitmap]() mutable {
+    uint8_t bit = 1;
+    while (bit < 4) {
+      if (bitmap & bit) {
+        bool res = true;
+        switch (bit) {
+          case 1: res = isnanf(dp1_) || MessageHandler::publish(MQTTTopic::KwlDP1Pressure, dp1_, 1, KWLConfig::RetainAdditionalSensors); break;
+          case 2: res = isnanf(dp2_) || MessageHandler::publish(MQTTTopic::KwlDP2Pressure, dp2_, 1, KWLConfig::RetainAdditionalSensors); break;
+          default: return true; // paranoia
+        }
+        if (!res)
+          return false; // will retry later
+        bitmap &= ~bit;
+      }
+      bit <<= 1;
+    }
+    return true;  // all sent
+  });
+  dp_send_task_.runRepeated(INTERVAL_MQTT_DP);
+  dp_send_oversample_task_.runRepeated(INTERVAL_MQTT_DP_FORCE);
+}
+
+bool AdditionalSensors::mqttReceiveMsg(const StringView& topic, const StringView& s)
+{
+#ifdef DEBUG
+  if (topic == MQTTTopic::KwlDebugsetDP1) {
+    if (s == MQTTTopic::ValueMeasure) {
+      if (tcaselect(0)) {
+        Serial.println(F("Restarting measurement on DP1 sensor"));
+        dp1.begin();
+      } else {
+        Serial.println(F("Cannot restart DP1 sensor, I2C switch not available"));
+      }
+    } else {
+      dp1.beginSimulated();
+      Serial.print(F("Starting simulation of DP1 sensor with pressure "));
+      if (s != MQTTTopic::ValueSimulate)
+        dp1_ = s.toFloat();
+      Serial.println(double(dp1_));
+    }
+    sendDP(true);
+  } else if (topic == MQTTTopic::KwlDebugsetDP2) {
+    if (s == MQTTTopic::ValueMeasure) {
+      if (tcaselect(1)) {
+        Serial.println(F("Restarting measurement on DP2 sensor"));
+        dp2.begin();
+      } else {
+        Serial.println(F("Cannot restart DP2 sensor, I2C switch not available"));
+      }
+    } else {
+      dp2.beginSimulated();
+      Serial.print(F("Starting simulation of DP2 sensor with pressure "));
+      if (s != MQTTTopic::ValueSimulate)
+        dp2_ = s.toFloat();
+      Serial.println(double(dp2_));
+    }
+    sendDP(true);
+  } else {
+    return false;
+  }
+  return true;
+#else
+  return false;
+#endif
 }

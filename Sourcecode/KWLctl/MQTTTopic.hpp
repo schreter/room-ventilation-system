@@ -45,6 +45,11 @@ namespace MQTTTopic
   /// Path for all debug status values.
   constexpr auto StateDebug                 = makeFlashStringLiteral("/debugstate/kwl/");
 
+  /// Switch to simulation mode for debuggable values.
+  constexpr auto ValueSimulate              = makeFlashStringLiteral("simulate");
+  /// Switch to real measurement mode for debuggable values.
+  constexpr auto ValueMeasure               = makeFlashStringLiteral("measure");
+
   // Remaining commands/values are internally prefixed by Command/State or by
   // CommandDebug/StateDebug. To differentiate, debug commands and states are
   // prefixed by single '/' below.
@@ -106,6 +111,8 @@ namespace MQTTTopic
   constexpr auto KwlDHT2Humidity            = makeFlashStringLiteral("dht2/humidity");
   constexpr auto KwlCO2Abluft               = makeFlashStringLiteral("abluft/co2");
   constexpr auto KwlVOCAbluft               = makeFlashStringLiteral("abluft/voc");
+  constexpr auto KwlDP1Pressure             = makeFlashStringLiteral("dp1/pressure");
+  constexpr auto KwlDP2Pressure             = makeFlashStringLiteral("dp2/pressure");
 
 
   // Die folgenden Topics sind nur für die SW-Entwicklung, und schalten Debugausgaben per mqtt ein und aus
@@ -115,11 +122,15 @@ namespace MQTTTopic
   constexpr auto KwlDebugstateFan2          = makeFlashStringLiteral("/fan2");
   constexpr auto KwlDebugstatePreheater     = makeFlashStringLiteral("/preheater");
 
-  // Die folgenden Topics sind nur für die SW-Entwicklung, es werden Messwerte überschrieben, es kann damit der Sommer-Bypass und die Frostschutzschaltung getestet werden
+  // Die folgenden Topics sind nur für die SW-Entwicklung, es werden Messwerte überschrieben,
+  // es kann damit der Sommer-Bypass und die Frostschutzschaltung getestet werden
   constexpr auto KwlDebugsetTemperaturAussenluft = makeFlashStringLiteral("/aussenluft/temperatur");
   constexpr auto KwlDebugsetTemperaturZuluft     = makeFlashStringLiteral("/zuluft/temperatur");
   constexpr auto KwlDebugsetTemperaturAbluft     = makeFlashStringLiteral("/abluft/temperatur");
   constexpr auto KwlDebugsetTemperaturFortluft   = makeFlashStringLiteral("/fortluft/temperatur");
+
+  constexpr auto KwlDebugsetDP1             = makeFlashStringLiteral("/dp1");
+  constexpr auto KwlDebugsetDP2             = makeFlashStringLiteral("/dp2");
 
   // Die folgenden Topics sind nur für die SW-Entwicklung, um Scheduler info auszulesen
   constexpr auto KwlDebugsetSchedulerGetvalues   = makeFlashStringLiteral("/scheduler/getvalues");
