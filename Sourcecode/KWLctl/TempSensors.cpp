@@ -37,10 +37,14 @@ void TempSensors::TempSensor::begin()
   sensor_.begin();
   sensor_.setResolution(TEMPERATURE_PRECISION);
   sensor_.setWaitForConversion(false);
-  if (!sensor_.getAddress(address_, 0))
+  retry_count_ = 0;
+  t_ = INVALID;
+  if (!sensor_.getAddress(address_, 0)) {
     state_ = -1;  // re-request later
-  else
+  } else {
+    state_ = 0;
     loop(); // initial temperature request
+  }
 }
 
 bool TempSensors::TempSensor::loop()
@@ -148,28 +152,37 @@ void TempSensors::run()
     sendMQTT();
 }
 
+void TempSensors::debugTemp(TempSensor& t, const StringView& s)
+{
+#ifdef DEBUG
+  if (s == MQTTTopic::ValueMeasure) {
+    Serial.println(F("Restarting temperature measurement"));
+    t.begin();
+  } else {
+    t.beginSimulation();
+    if (s != MQTTTopic::ValueSimulate)
+      t.get_t() = s.toDouble();
+    Serial.print(F("Simulating temperature measurement with value "));
+    Serial.println(t.get_t());
+  }
+  forceSend();
+#endif
+}
+
 bool TempSensors::mqttReceiveMsg(const StringView& topic, const StringView& s)
 {
   if (topic == MQTTTopic::CmdGetTemp) {
     forceSend();
   }
 #ifdef DEBUG
-  // TODO this should also disable updating temperatures via sensors
-  else if (topic == MQTTTopic::KwlDebugsetTemperaturAussenluft) {
-    get_t1_outside() = s.toDouble();
-    forceSend();
-  }
-  else if (topic == MQTTTopic::KwlDebugsetTemperaturZuluft) {
-    get_t2_inlet() = s.toDouble();
-    forceSend();
-  }
-  else if (topic == MQTTTopic::KwlDebugsetTemperaturAbluft) {
-    get_t3_outlet() = s.toDouble();
-    forceSend();
-  }
-  else if (topic == MQTTTopic::KwlDebugsetTemperaturFortluft) {
-    get_t4_exhaust() = s.toDouble();
-    forceSend();
+  else if (topic == MQTTTopic::KwlDebugsetT1 || topic == MQTTTopic::KwlDebugsetTemperaturAussenluft) {
+    debugTemp(t1_, s);
+  } else if (topic == MQTTTopic::KwlDebugsetT2 || topic == MQTTTopic::KwlDebugsetTemperaturZuluft) {
+    debugTemp(t2_, s);
+  } else if (topic == MQTTTopic::KwlDebugsetT3 || topic == MQTTTopic::KwlDebugsetTemperaturAbluft) {
+    debugTemp(t3_, s);
+  } else if (topic == MQTTTopic::KwlDebugsetT4 || topic == MQTTTopic::KwlDebugsetTemperaturFortluft) {
+    debugTemp(t4_, s);
   }
 #endif
   else {

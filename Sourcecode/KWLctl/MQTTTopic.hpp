@@ -129,6 +129,11 @@ namespace MQTTTopic
   constexpr auto KwlDebugsetTemperaturAbluft     = makeFlashStringLiteral("/abluft/temperatur");
   constexpr auto KwlDebugsetTemperaturFortluft   = makeFlashStringLiteral("/fortluft/temperatur");
 
+  constexpr auto KwlDebugsetT1              = makeFlashStringLiteral("/t1");
+  constexpr auto KwlDebugsetT2              = makeFlashStringLiteral("/t2");
+  constexpr auto KwlDebugsetT3              = makeFlashStringLiteral("/t3");
+  constexpr auto KwlDebugsetT4              = makeFlashStringLiteral("/t4");
+
   constexpr auto KwlDebugsetDP1             = makeFlashStringLiteral("/dp1");
   constexpr auto KwlDebugsetDP2             = makeFlashStringLiteral("/dp2");
 

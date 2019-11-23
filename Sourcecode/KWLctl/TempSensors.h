@@ -50,6 +50,9 @@ class TempSensors : private MessageHandler
     /// Initialize the sensor.
     void begin();
 
+    /// Put into simulation mode (no measurements, just use cached value).
+    void beginSimulation() { state_ = STATE_SIMULATE; }
+
     /// Execute one loop, returns true if temperature read.
     bool loop();
 
@@ -62,6 +65,8 @@ class TempSensors : private MessageHandler
   private:
     /// Maximum wait time to wait for sensor to respond before reporting INVALID and retrying (5s).
     static constexpr uint8_t MAX_WAIT_TIME = 3;
+    /// State to indicate simulation mode.
+    static constexpr int8_t STATE_SIMULATE = 127;
     /// After how many errors do we consider temperature sensor to be dead (~1 min).
     static constexpr uint8_t MAX_RETRIES = 5;
 
@@ -112,6 +117,9 @@ public:
 private:
   void run();
   virtual bool mqttReceiveMsg(const StringView& topic, const StringView& s) override;
+
+  /// Process debug request.
+  void debugTemp(TempSensor& t, const StringView& s);
 
   /// Send messages via MQTT.
   void sendMQTT();
