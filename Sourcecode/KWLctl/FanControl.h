@@ -109,7 +109,7 @@ private:
   inline void interrupt() { rpm_.interrupt(); }
 
   /// Called by the fan control to update speed from RPM measurement.
-  inline void updateSpeed() { current_speed_ = rpm_.getSpeed(); }
+  inline void updateSpeed();
 
   /// Update fan speed based on modes.
   void computeSpeed(int ventMode, FanCalculateSpeedMode calcMode);
@@ -119,6 +119,9 @@ private:
 
   /// Debug: set PWM signal explicitly for debugging purposes.
   void debugSet(int ventMode, int techSetpoint);
+
+  /// Debug: process simulate speed command.
+  void debugSetSpeed(const StringView& s);
 
   /// Prepare for calibration.
   void prepareCalibration() { good_pwm_setpoint_count_ = 0; }
@@ -153,6 +156,10 @@ private:
   uint8_t pwm_pin_;                     ///< Pin to send PWM signa to.
   uint8_t tacho_pin_;                   ///< Pin to read tacho signal from.
   uint8_t fan_id_;                      ///< Fan ID (1 or 2).
+#ifdef DEBUG
+  uint8_t simulate_speed_ = 0;          ///< Speed simulation for debug purposes.
+  unsigned long simulate_speed_last_;   ///< Last simulated speed measurement.
+#endif
   PID pid_;                             ///< PID regulator for this fan.
 };
 

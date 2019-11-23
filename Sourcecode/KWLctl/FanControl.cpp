@@ -99,6 +99,31 @@ void Fan::begin(void (*countUp)(), unsigned standardSpeed, float ipr)
   power_.on();
 }
 
+void Fan::updateSpeed() {
+#ifdef DEBUG
+  if (simulate_speed_) {
+    // update speed to match tech_setpoint_ * simulate_speed_, but at most by 2000rpm/s
+    auto target = tech_setpoint_ * simulate_speed_;
+    auto time = millis();
+    double delta = 2 * (time - simulate_speed_last_); // RPM delta
+    if (target > current_speed_) {
+      if (current_speed_ + delta > target)
+        current_speed_ = target;
+      else
+        current_speed_ += delta;
+    } else {
+      if (current_speed_ - delta < target)
+        current_speed_ = target;
+      else
+        current_speed_ -= delta;
+    }
+    simulate_speed_last_ = time;
+    return;
+  }
+#endif
+  current_speed_ = rpm_.getSpeed();
+}
+
 void Fan::computeSpeed(int ventMode, FanCalculateSpeedMode calcMode)
 {
   speed_setpoint_ = standard_speed_ * KWLConfig::StandardKwlModeFactor[ventMode];
@@ -174,6 +199,28 @@ void Fan::debugSet(int ventMode, int techSetpoint) {
   else if (techSetpoint > 1000)
     techSetpoint = 1000;
   pwm_setpoint_[ventMode] = techSetpoint;
+}
+
+void Fan::debugSetSpeed(const StringView& s) {
+#ifdef DEBUG
+  if (s == MQTTTopic::ValueMeasure) {
+    Serial.print(F("Restarting measurement for fan "));
+    Serial.println(int(fan_id_));
+    simulate_speed_ = 0;
+  } else {
+    Serial.print(F("Simulating measurement for fan "));
+    Serial.print(int(fan_id_));
+    simulate_speed_ = 10;
+    if (s != MQTTTopic::ValueSimulate) {
+      auto i = s.toInt();
+      if (i >= 3 && i <= 30)
+        simulate_speed_ = uint8_t(i);
+    }
+    Serial.print(F(" with PWM->RPM factor "));
+    Serial.println(simulate_speed_);
+    simulate_speed_last_ = millis();
+  }
+#endif
 }
 
 bool Fan::speedCalibrationStep(int mode)
@@ -494,6 +541,10 @@ bool FanControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
   } else if (topic == MQTTTopic::KwlDebugsetFanPWMStore) {
     // store calibration data in EEPROM
     storePWMSettingsToEEPROM();
+  } else if (topic == MQTTTopic::KwlDebugsetFan1) {
+    fan1_.debugSetSpeed(s);
+  } else if (topic == MQTTTopic::KwlDebugsetFan2) {
+    fan2_.debugSetSpeed(s);
 #endif
   } else {
     return false;

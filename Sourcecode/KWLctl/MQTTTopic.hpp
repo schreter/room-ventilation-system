@@ -155,4 +155,9 @@ namespace MQTTTopic
   constexpr auto KwlDebugsetFan1PWM         = makeFlashStringLiteral("/fan1/pwm");
   constexpr auto KwlDebugsetFan2PWM         = makeFlashStringLiteral("/fan2/pwm");
   constexpr auto KwlDebugsetFanPWMStore     = makeFlashStringLiteral("/fan/pwm/store_IKNOWWHATIMDOING");
+
+  // Die folgenden Topics sind nur für die SW-Entwicklung, um Lueftergeschwindigkeit zu simulieren
+  // Man kann die PWM->Speed Uebersetzung steuern, default 10 (bis 10000rpm via PWM).
+  constexpr auto KwlDebugsetFan1            = makeFlashStringLiteral("/fan1");
+  constexpr auto KwlDebugsetFan2            = makeFlashStringLiteral("/fan2");
 }
