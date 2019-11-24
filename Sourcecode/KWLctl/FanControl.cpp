@@ -21,6 +21,7 @@
 #include "FanControl.h"
 #include "MQTTTopic.hpp"
 #include "KWLConfig.h"
+#include "AdditionalSensors.h"
 
 #include <StringView.h>
 
@@ -118,6 +119,9 @@ void Fan::updateSpeed() {
         current_speed_ -= delta;
     }
     simulate_speed_last_ = time;
+    // update simulated differential pressure as well
+    if (simulated_dp_)
+      *simulated_dp_ = float(current_speed_) / 40; // 50Pa at 2000rpm
     return;
   }
 #endif
@@ -201,12 +205,13 @@ void Fan::debugSet(int ventMode, int techSetpoint) {
   pwm_setpoint_[ventMode] = techSetpoint;
 }
 
-void Fan::debugSetSpeed(const StringView& s) {
+void Fan::debugSetSpeed(const StringView& s, float& simulated_dp) {
 #ifdef DEBUG
   if (s == MQTTTopic::ValueMeasure) {
     Serial.print(F("Restarting measurement for fan "));
     Serial.println(int(fan_id_));
     simulate_speed_ = 0;
+    simulated_dp_ = nullptr;
   } else {
     Serial.print(F("Simulating measurement for fan "));
     Serial.print(int(fan_id_));
@@ -219,6 +224,7 @@ void Fan::debugSetSpeed(const StringView& s) {
     Serial.print(F(" with PWM->RPM factor "));
     Serial.println(simulate_speed_);
     simulate_speed_last_ = millis();
+    simulated_dp_ = &simulated_dp;
   }
 #endif
 }
@@ -283,10 +289,16 @@ void Fan::sendMQTTDebug(int id, unsigned long ts, MessageHandler& h)
 }
 
 
-FanControl::FanControl(KWLPersistentConfig& config, SetSpeedCallback *speedCallback) :
+FanControl::FanControl(
+    KWLPersistentConfig& config,
+    SetSpeedCallback *speedCallback,
+    AdditionalSensors& additionalSensors) :
   MessageHandler(F("FanControl")),
   fan1_(1, KWLConfig::PinFan1Power, KWLConfig::PinFan1PWM, KWLConfig::PinFan1Tacho, KWLConfig::StandardFan1ImpulsesPerRotation),
   fan2_(2, KWLConfig::PinFan2Power, KWLConfig::PinFan2PWM, KWLConfig::PinFan2Tacho, KWLConfig::StandardFan2ImpulsesPerRotation),
+#ifdef DEBUG
+  additional_sensors_(additionalSensors),
+#endif
   speed_callback_(speedCallback),
   ventilation_mode_(KWLConfig::StandardKwlMode),
   persistent_config_(config),
@@ -542,9 +554,9 @@ bool FanControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
     // store calibration data in EEPROM
     storePWMSettingsToEEPROM();
   } else if (topic == MQTTTopic::KwlDebugsetFan1) {
-    fan1_.debugSetSpeed(s);
+    fan1_.debugSetSpeed(s, additional_sensors_.getDP1());
   } else if (topic == MQTTTopic::KwlDebugsetFan2) {
-    fan2_.debugSetSpeed(s);
+    fan2_.debugSetSpeed(s, additional_sensors_.getDP2());
 #endif
   } else {
     return false;

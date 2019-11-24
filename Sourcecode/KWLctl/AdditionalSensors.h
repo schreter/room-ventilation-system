@@ -91,6 +91,14 @@ public:
     p2 = dp2_;
   }
 
+#ifdef DEBUG
+  /// Get reference to DP1 storage (for DP simulation).
+  inline float& getDP1() noexcept { return dp1_; }
+
+  /// Get reference to DP2 storage (for DP simulation).
+  inline float& getDP2() noexcept { return dp2_; }
+#endif
+
 private:
   /// Set up CO2 sensor.
   bool setupMHZ14();
@@ -107,6 +115,8 @@ private:
   void readVOC();
   /// Read value of differential pressure sensors.
   void readDP();
+  /// Set up tasks to run for differential pressure sensors based on their presence.
+  void setupDPTasks() noexcept;
 
   /// Schedule sending DHT values now.
   void sendDHT(bool force) noexcept;

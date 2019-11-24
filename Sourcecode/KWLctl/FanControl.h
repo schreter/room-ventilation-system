@@ -35,8 +35,7 @@
 
 class Print;
 class KWLPersistentConfig;
-
-class MessageHandler;
+class AdditionalSensors;
 
 /// Fan operation modes.
 enum class FanMode : uint8_t
@@ -121,7 +120,7 @@ private:
   void debugSet(int ventMode, int techSetpoint);
 
   /// Debug: process simulate speed command.
-  void debugSetSpeed(const StringView& s);
+  void debugSetSpeed(const StringView& s, float& simulated_dp);
 
   /// Prepare for calibration.
   void prepareCalibration() { good_pwm_setpoint_count_ = 0; }
@@ -159,6 +158,7 @@ private:
 #ifdef DEBUG
   uint8_t simulate_speed_ = 0;          ///< Speed simulation for debug purposes.
   unsigned long simulate_speed_last_;   ///< Last simulated speed measurement.
+  float* simulated_dp_ = nullptr;       ///< Pointer to simulated differential pressure to update.
 #endif
   PID pid_;                             ///< PID regulator for this fan.
 };
@@ -187,8 +187,12 @@ public:
    * @param speedCallback callback to call after computing PWM signal for fans, but before
    *        setting it. Typically used for antifreeze/preheater regulation and to turn off
    *        fans if no preheater installed.
+   * @param additionalSensors reference to additional sensors for DP simulation.
    */
-  explicit FanControl(KWLPersistentConfig& config, SetSpeedCallback *speedCallback);
+  explicit FanControl(
+      KWLPersistentConfig& config,
+      SetSpeedCallback *speedCallback,
+      AdditionalSensors& additionalSensors);
 
   /*!
    * @brief Start fans.
@@ -261,6 +265,10 @@ private:
 
   Fan fan1_;   ///< Control for fan 1 (intake).
   Fan fan2_;   ///< Control for fan 2 (exhaust).
+
+#ifdef DEBUG
+  AdditionalSensors& additional_sensors_;
+#endif
 
   SetSpeedCallback *speed_callback_;///< Callback to call when new tech points for fans computed.
   int ventilation_mode_;            ///< Current ventilation mode (0-n).

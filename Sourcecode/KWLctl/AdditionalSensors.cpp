@@ -326,7 +326,7 @@ void AdditionalSensors::readDP()
     Serial.print(F(", T="));
     Serial.print(temp1);
     Serial.print(F("; DP2 P="));
-    Serial.print(dp1_);
+    Serial.print(dp2_);
     Serial.print(F(", T="));
     Serial.println(temp2);
   }
@@ -380,9 +380,6 @@ void AdditionalSensors::begin(Print& initTracer)
     if (has_dp1 && has_dp2)
     {
       initTracer.print(F(" DP"));
-      dp_read_.runRepeated(INTERVAL_DP_READ, INTERVAL_DP_READ);
-      dp_send_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP);
-      dp_send_oversample_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP_FORCE);
     }
     else if (has_dp1 || has_dp2)
     {
@@ -395,6 +392,7 @@ void AdditionalSensors::begin(Print& initTracer)
     {
       initTracer.print(F(" !DP"));
     }
+    setupDPTasks();
   }
 
   if (!DHT1_available_ && !DHT2_available_ && !MHZ14_available_ && !TGS2600_available_ &&
@@ -426,6 +424,19 @@ bool AdditionalSensors::updateDP() noexcept
 {
   readDP();
   return !isnanf(dp1_) && !isnanf(dp2_);
+}
+
+void AdditionalSensors::setupDPTasks() noexcept
+{
+  if (hasDP()) {
+    dp_read_.runRepeated(INTERVAL_DP_READ, INTERVAL_DP_READ);
+    dp_send_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP);
+    dp_send_oversample_task_.runRepeated(INTERVAL_DP_READ + 1000000, INTERVAL_MQTT_DP_FORCE);
+  } else {
+    dp_read_.cancel();
+    dp_send_task_.cancel();
+    dp_send_oversample_task_.cancel();
+  }
 }
 
 void AdditionalSensors::sendDHT(bool force) noexcept
@@ -541,6 +552,7 @@ bool AdditionalSensors::mqttReceiveMsg(const StringView& topic, const StringView
         dp1_ = s.toFloat();
       Serial.println(double(dp1_));
     }
+    setupDPTasks();
     sendDP(true);
   } else if (topic == MQTTTopic::KwlDebugsetDP2) {
     if (s == MQTTTopic::ValueMeasure) {
@@ -557,6 +569,7 @@ bool AdditionalSensors::mqttReceiveMsg(const StringView& topic, const StringView
         dp2_ = s.toFloat();
       Serial.println(double(dp2_));
     }
+    setupDPTasks();
     sendDP(true);
   } else {
     return false;
