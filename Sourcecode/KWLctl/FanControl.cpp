@@ -137,18 +137,18 @@ void Fan::computeSpeed(int ventMode, FanCalculateSpeedMode calcMode)
     return;
   }
 
-  double gap = abs(speed_setpoint_ - current_speed_); //distance away from setpoint
-
   // Das PWM-Signal kann entweder per PID-Regler oder unten per Dreisatz berechnen werden.
   // TODO above comment seems invalid now
-  if (calcMode == FanCalculateSpeedMode::PID) {
+  if (calcMode == FanCalculateSpeedMode::SPEED_PID || calcMode == FanCalculateSpeedMode::DP_PID) {
+    // TODO add handling of DP PID here - different gap and so
+    double gap = abs(speed_setpoint_ - current_speed_); //distance away from setpoint
     if (gap < 1000) {
       pid_.SetTunings(consKp, consKi, consKd);
     } else {
       pid_.SetTunings(aggKp, aggKi, aggKd);
     }
     pid_.Compute();
-  } else if (calcMode == FanCalculateSpeedMode::PROP) {
+  } else if (calcMode == FanCalculateSpeedMode::SPEED_PROP || calcMode == FanCalculateSpeedMode::DP_PROP) {
     tech_setpoint_ = pwm_setpoint_[ventMode];
   }
 
@@ -296,9 +296,7 @@ FanControl::FanControl(
   MessageHandler(F("FanControl")),
   fan1_(1, KWLConfig::PinFan1Power, KWLConfig::PinFan1PWM, KWLConfig::PinFan1Tacho, KWLConfig::StandardFan1ImpulsesPerRotation),
   fan2_(2, KWLConfig::PinFan2Power, KWLConfig::PinFan2PWM, KWLConfig::PinFan2Tacho, KWLConfig::StandardFan2ImpulsesPerRotation),
-#ifdef DEBUG
   additional_sensors_(additionalSensors),
-#endif
   speed_callback_(speedCallback),
   ventilation_mode_(KWLConfig::StandardKwlMode),
   persistent_config_(config),
@@ -426,7 +424,7 @@ void FanControl::speedCalibrationStep()
     calibration_in_progress_ = true;
     calibration_start_time_us_ = timer_task_.getScheduleTime();
     current_calibration_mode_ = 0;
-    calc_speed_mode_ = FanCalculateSpeedMode::PROP;
+    calc_speed_mode_ = FanCalculateSpeedMode::SPEED_PROP;
   }
   if (calibration_in_progress_ && (timer_task_.getScheduleTime() - calibration_start_time_us_ >= TIMEOUT_CALIBRATION)) {
     // Timeout, Kalibrierung abbrechen
@@ -516,10 +514,17 @@ bool FanControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
     // KWL Stufe
     setVentilationMode(int(s.toInt()));
   } else if (topic == MQTTTopic::CmdFansCalculateSpeedMode) {
-    if (s == F("PROP"))
-      setCalculateSpeedMode(FanCalculateSpeedMode::PROP);
-    else if (s == F("PID"))
-      setCalculateSpeedMode(FanCalculateSpeedMode::PID);
+    if (s == F("PROP") || s == F("SPEED_PROP"))
+      setCalculateSpeedMode(FanCalculateSpeedMode::SPEED_PROP);
+    else if (s == F("PID") || s == F("SPEED_PID"))
+      setCalculateSpeedMode(FanCalculateSpeedMode::SPEED_PID);
+    else if (additional_sensors_.hasDP()) {
+      // differential sensors present, allow setting differential pressure control
+      if (s == F("DP_PROP"))
+        setCalculateSpeedMode(FanCalculateSpeedMode::DP_PROP);
+      else if (s == F("DP_PID"))
+        setCalculateSpeedMode(FanCalculateSpeedMode::DP_PID);
+    }
   } else if (topic == MQTTTopic::CmdCalibrateFans) {
     if (s == F("YES"))
       speedCalibrationStart();

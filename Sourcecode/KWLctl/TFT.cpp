@@ -178,10 +178,14 @@ static const char* fanModeToString(FanCalculateSpeedMode mode) noexcept
 {
   switch (mode) {
     default:
-    case FanCalculateSpeedMode::PID:
-      return PSTR("PID-Regler");
-    case FanCalculateSpeedMode::PROP:
-      return PSTR("PWM-Wert");
+    case FanCalculateSpeedMode::SPEED_PID:
+      return PSTR("Drehz+PID");
+    case FanCalculateSpeedMode::SPEED_PROP:
+      return PSTR("Drehzahl");
+    case FanCalculateSpeedMode::DP_PID:
+      return PSTR("Druck+PID");
+    case FanCalculateSpeedMode::DP_PROP:
+      return PSTR("Druck");
   }
 }
 
@@ -2064,7 +2068,9 @@ protected:
               setpoint_l2_ = FanRPM::MAX_RPM;
             break;
           case 3:
-            calculate_speed_mode_ = FanCalculateSpeedMode::PID;
+            if (calculate_speed_mode_ > FanCalculateSpeedMode::SPEED_PROP)
+              calculate_speed_mode_ = static_cast<FanCalculateSpeedMode>(
+                       static_cast<int8_t>(calculate_speed_mode_) - 1);
             break;
           case 4:
             update_ipr((getCurrentColumn() == 0) ? ipr_l1_ : ipr_l2_, -1);
@@ -2089,7 +2095,10 @@ protected:
               setpoint_l2_ = FanRPM::MIN_RPM;
             break;
           case 3:
-            calculate_speed_mode_ = FanCalculateSpeedMode::PROP;
+            if (calculate_speed_mode_ < (getControl().getAdditionalSensors().hasDP() ?
+                     FanCalculateSpeedMode::DP_PID : FanCalculateSpeedMode::SPEED_PID))
+              calculate_speed_mode_ = static_cast<FanCalculateSpeedMode>(
+                       static_cast<int8_t>(calculate_speed_mode_) + 1);
             break;
           case 4:
             update_ipr((getCurrentColumn() == 0) ? ipr_l1_ : ipr_l2_, +1);

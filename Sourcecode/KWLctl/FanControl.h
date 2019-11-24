@@ -47,9 +47,13 @@ enum class FanMode : uint8_t
 /// Fan speed calculation mode.
 enum class FanCalculateSpeedMode : int8_t
 {
-  PID = 1,          ///< Use PID regulator (calibration and continuous calibration).
-  PROP = 0,         ///< Use simple proportional calculation to PWM signal (normal operation).
-  UNSET = -1        ///< Not set.
+  SPEED_PID   = 1,  ///< Calibrate on fan speed, use PID regulator to continuously adjust.
+  SPEED_PROP  = 0,  ///< Calibrate on fan speed, then use calibrated PWM signal to drive fans.
+
+  DP_PID      = 3,  ///< Calibrate on differential pressure, use PID regulator to continuously adjust.
+  DP_PROP     = 2,  ///< Calibrate on differential pressure, then use calibrated PWM signal to drive fans.
+
+  UNSET       = -1  ///< Not set.
 };
 
 /// One fan handler.
@@ -266,14 +270,12 @@ private:
   Fan fan1_;   ///< Control for fan 1 (intake).
   Fan fan2_;   ///< Control for fan 2 (exhaust).
 
-#ifdef DEBUG
   AdditionalSensors& additional_sensors_;
-#endif
 
   SetSpeedCallback *speed_callback_;///< Callback to call when new tech points for fans computed.
   int ventilation_mode_;            ///< Current ventilation mode (0-n).
   FanMode mode_ = FanMode::Normal;  ///< Current operation mode.
-  FanCalculateSpeedMode calc_speed_mode_ = FanCalculateSpeedMode::PROP;
+  FanCalculateSpeedMode calc_speed_mode_ = FanCalculateSpeedMode::SPEED_PROP;
 
   bool calibration_in_progress_ = false;        ///< Flag set during calibration.
   bool calibration_pwm_in_progress_ = false;    ///< Flag set during calibration of one PWM mode.
