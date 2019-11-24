@@ -301,6 +301,9 @@ public:
     last_input_time_(millis())
   {}
 
+  // NOTE: no destructor, since we anyway don't destroy objects and this saves ~64B RAM
+  //virtual ~Screen() noexcept {}
+
 protected:
   friend class TFT;
 
@@ -319,14 +322,14 @@ protected:
    * @param time time of the touch in milliseconds.
    * @return @c true, if touch consumed, @c false if not.
    */
-  virtual bool touch(int16_t x, int16_t y, unsigned long time) noexcept
+  virtual bool touch(int16_t /*x*/, int16_t /*y*/, unsigned long time) noexcept
   {
     last_input_time_ = time;
     return false;
   }
 
   /// React to touch input release, passes time in milliseconds.
-  virtual void release(unsigned long time) noexcept {}
+  virtual void release(unsigned long /*time*/) noexcept {}
 
   /*!
    * @brief Check whether last screen displayed was of the specified class.
@@ -1092,7 +1095,7 @@ protected:
     return (x >= 480 - TOUCH_BTN_WIDTH);
   }
 
-  virtual void release(unsigned long time) noexcept override
+  virtual void release(unsigned long /*time*/) noexcept override
   {
     setMenuBorder(0);
   }
@@ -1138,7 +1141,7 @@ private:
   }
 
   /// Draw function doing nothing.
-  static void empty_draw_func(int16_t bx, int16_t by, int16_t bw, int16_t bh) noexcept {}
+  static void empty_draw_func(int16_t /*bx*/, int16_t /*by*/, int16_t /*bw*/, int16_t /*bh*/) noexcept {}
 
   /// Maximum menu button count.
   static constexpr uint8_t MAX_MENU_BTN_COUNT = 6;
@@ -1169,7 +1172,7 @@ protected:
     setupInputFieldColumns();
   }
 
-  void init() noexcept
+  void init() noexcept override
   {
     ScreenBase::init();
     input_current_col_ = input_current_row_ = 0;
@@ -1468,9 +1471,9 @@ protected:
 
 private:
   /// Override to add action when a field is being entered.
-  virtual void input_field_enter(uint8_t row, uint8_t col) noexcept {}
+  virtual void input_field_enter(uint8_t /*row*/, uint8_t /*col*/) noexcept {}
   /// Override to add action when a field is being exited.
-  virtual void input_field_leave(uint8_t row, uint8_t col) noexcept {}
+  virtual void input_field_leave(uint8_t /*row*/, uint8_t /*col*/) noexcept {}
   /// Override to format field text and draw it.
   virtual void input_field_draw(uint8_t row, uint8_t col) noexcept = 0;
 
@@ -1686,7 +1689,7 @@ protected:
     update_fan(XX + 162, XY + 10 + HEIGHT_NUMBER_FIELD + 4, tacho_fan2_, int(fan.getFan2().getSpeed()));
     update_fan(XX + 162, XY + 125 - 2 * HEIGHT_NUMBER_FIELD - 4, tacho_fan1_, int(fan.getFan1().getSpeed()));
     // Efficiency between intake and exhaust temperatures
-    update_eff(XX, XY + 10 + (115 - HEIGHT_NUMBER_FIELD) / 2, 78, temp.getEfficiency());
+    update_eff(XX, XY + 10 + (117 - HEIGHT_NUMBER_FIELD) / 2, 78, temp.getEfficiency());
 
     // Display symbol for antifreeze or bypass, if needed
     int8_t new_sym = 0;
@@ -1733,11 +1736,16 @@ protected:
       update_qual(HX + 35, HY + 120 - 30, co2_, addt.getCO2());
     else
       update_qual(HX + 35, HY + 120 - 30, co2_, -1);
+    if (addt.hasDP()) {
+      tft_.setFont(&FreeSans9pt7b);
+      update_dp(XX, XY + 10 + HEIGHT_NUMBER_FIELD + 4, dp1_, addt.getDP1());
+      update_dp(XX, XY + 125 - HEIGHT_NUMBER_FIELD - BASELINE_SMALL - 4, dp2_, addt.getDP2());
+    }
 
     ScreenWithMenuButtons::update();
   }
 
-  virtual bool touch(int16_t x, int16_t y, unsigned long time) noexcept
+  virtual bool touch(int16_t x, int16_t y, unsigned long time) noexcept override
   {
     if (ScreenWithMenuButtons::touch(x, y, time))
       return true;
@@ -1752,7 +1760,7 @@ protected:
     return false;
   }
 
-  virtual void release(unsigned long time) noexcept
+  virtual void release(unsigned long time) noexcept override
   {
     ScreenWithMenuButtons::release(time);
     touch_start_ = 0;
@@ -1819,14 +1827,11 @@ private:
     if (delta > 1 || delta < -1) {
       efficiency_ = cur;
       char buffer[8];
-      int16_t x1, y1;
-      uint16_t w, h;
       tft_.fillRect(x, y, tw, HEIGHT_NUMBER_FIELD, colBackColor + DEBUG_HIGHLIGHT);
       if (cur >= 0 && cur <= 100)
         snprintf(buffer, sizeof(buffer), "%d %%", cur);
       else
         strcpy_P(buffer, PSTR("?? %"));
-      tft_.getTextBounds(buffer, 0, 0, &x1, &y1, &w, &h);
       tft_.setCursor(x, y + BASELINE_MIDDLE);
       tft_.setTextColor(colFontColor);
       tft_.print(buffer);
@@ -1841,14 +1846,11 @@ private:
     if (h != last_h) {
       last_h = h;
       char buffer[8];
-      int16_t x1, y1;
-      uint16_t tw, th;
       tft_.fillRect(x, y + 24, 80, HEIGHT_NUMBER_FIELD, colBackColor + DEBUG_HIGHLIGHT);
       if (h >= 0 && h <= 100)
         snprintf_P(buffer, sizeof(buffer), PSTR("%d %%"), h);
       else
         strcpy_P(buffer, PSTR("n/a %"));
-      tft_.getTextBounds(buffer, 0, 0, &x1, &y1, &tw, &th);
       tft_.setCursor(x, y + 24 + BASELINE_MIDDLE);
       tft_.print(buffer);
     }
@@ -1863,16 +1865,43 @@ private:
     if (delta >= 10 || delta <= -10 || (cur == 9999 && delta != 0)) {
       last = cur;
       char buffer[8];
-      int16_t x1, y1;
-      uint16_t w, h;
       tft_.fillRect(x, y, 80, HEIGHT_NUMBER_FIELD, colBackColor + DEBUG_HIGHLIGHT);
       if (cur >= 0)
         snprintf(buffer, sizeof(buffer), "%d/m", cur);
       else
         strcpy_P(buffer, PSTR("n/a"));
-      tft_.getTextBounds(buffer, 0, 0, &x1, &y1, &w, &h);
       tft_.setCursor(x, y + BASELINE_MIDDLE);
       tft_.setTextColor(colFontColor);
+      tft_.print(buffer);
+    }
+  }
+
+  /// Update differential pressure reading, if needed.
+  void update_dp(int x, int y, float& last, float cur) noexcept
+  {
+    bool update = false;
+    if (isnanf(last) || isnanf(cur)) {
+      update = isnanf(last) != isnanf(cur);
+    } else {
+      auto delta = last - cur;
+      update = (delta >= 0.1F || delta <= -0.1F);
+    }
+    if (update) {
+      last = cur;
+      char buffer[10];
+      uint16_t fill_color = colBackColor + DEBUG_HIGHLIGHT;
+      tft_.setTextColor(colFontColor);
+      if (isnanf(cur)) {
+        buffer[0] = 0;
+      } else {
+        double v = fabsf(cur);
+        if (v > 999.9)
+          v = 999.9;
+        dtostrf(v, 4, 1, buffer);
+        strcat_P(buffer, PSTR(" Pa"));
+      }
+      tft_.fillRect(x, y, 79, BASELINE_SMALL + 2, fill_color);
+      tft_.setCursor(x, y + BASELINE_SMALL);
       tft_.print(buffer);
     }
   }
@@ -1885,6 +1914,7 @@ private:
   int8_t symbol_ = -1;
   int efficiency_ = -100;
   float t1_ = -1000, t2_ = -1000, t3_ = -1000, t4_ = -1000, dht1t_ = -1000, dht2t_ = -1000;
+  float dp1_ = NAN, dp2_ = NAN;
   int dht1h_ = -1000, dht2h_ = -1000, voc_ = -1000, co2_ = -1000;
   uint8_t program_set_ = 255; ///< Active program set.
   int8_t program_index_ = -1; ///< Active program index.
@@ -2306,7 +2336,7 @@ protected:
   }
 
 private:
-  virtual void input_field_enter(uint8_t row, uint8_t col) noexcept override
+  virtual void input_field_enter(uint8_t /*row*/, uint8_t /*col*/) noexcept override
   {
     IPAddressLiteral* ip;
     switch (getCurrentRow()) {
@@ -2323,7 +2353,7 @@ private:
       cur_ = (*ip)[getCurrentColumn()];
   }
 
-  virtual void input_field_leave(uint8_t row, uint8_t col) noexcept override
+  virtual void input_field_leave(uint8_t /*row*/, uint8_t /*col*/) noexcept override
   {
     IPAddress old_ip(ip_);
     IPAddress old_mask(mask_);
@@ -2616,7 +2646,7 @@ private:
     }
   }
 
-  virtual void input_field_draw(uint8_t row, uint8_t col) noexcept override
+  virtual void input_field_draw(uint8_t row, uint8_t /*col*/) noexcept override
   {
     unsigned cur;
     switch (row) {
@@ -2727,7 +2757,7 @@ protected:
   }
 
 private:
-  virtual void input_field_draw(uint8_t row, uint8_t col) noexcept override
+  virtual void input_field_draw(uint8_t row, uint8_t /*col*/) noexcept override
   {
     char buf[16];
     switch (row) {
@@ -2835,7 +2865,7 @@ protected:
   }
 
 private:
-  virtual void input_field_draw(uint8_t row, uint8_t col) noexcept override
+  virtual void input_field_draw(uint8_t row, uint8_t /*col*/) noexcept override
   {
     char buf[8];
     switch (row) {
@@ -3232,7 +3262,7 @@ private:
     return true;
   }
 
-  virtual void release(unsigned long time) noexcept override
+  virtual void release(unsigned long /*time*/) noexcept override
   {
     if (KWLConfig::serialDebugDisplay)
       Serial.println(F("TFT: calibration touch release"));
