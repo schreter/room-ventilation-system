@@ -21,27 +21,37 @@
 
 size_t MultiPrint::write(uint8_t c)
 {
-  auto res = s1_.write(c);
-  s2_.write(c);
-  setWriteError(s1_.getWriteError());
+  if (!s1_)
+    return 0;
+  auto res = s1_->write(c);
+  if (s2_)
+    s2_->write(c);
+  setWriteError(s1_->getWriteError());
   return res;
 }
 
 size_t MultiPrint::write(const uint8_t *buffer, size_t size)
 {
-  auto res = s1_.write(buffer, size);
-  s2_.write(buffer, size);
-  setWriteError(s1_.getWriteError());
+  if (!s1_)
+    return 0;
+  auto res = s1_->write(buffer, size);
+  if (s2_)
+    s2_->write(buffer, size);
+  setWriteError(s1_->getWriteError());
   return res;
 }
 
 int MultiPrint::availableForWrite()
 {
-  return s1_.availableForWrite();
+  if (!s1_)
+    return 0;
+  return s1_->availableForWrite();
 }
 
 void MultiPrint::flush()
 {
-  s1_.flush();
-  s2_.flush();
+  if (s1_)
+    s1_->flush();
+  if (s2_)
+    s2_->flush();
 }

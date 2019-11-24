@@ -52,7 +52,10 @@
 #include <MultiPrint.h>
 
 // Actual instance of the control system.
-KWLControl kwlControl;
+static KWLControl kwlControl;
+
+// Init tracer which prints to both TFT and Serial.
+static MultiPrint initTracer;
 
 static void loopWrite100Millis() {
   auto currentMillis = millis();
@@ -81,8 +84,8 @@ void setup()
   // *** TFT AUSGABE ***
   kwlControl.getTFT().setup();
 
-  // Init tracer which prints to both TFT and Serial.
-  static MultiPrint initTracer(Serial, kwlControl.getTFT().getTFTPrinter());
+  // Set up init tracer.
+  initTracer.begin(Serial, kwlControl.getTFT().getTFTPrinter());
 
   initTracer.println(F("Booting... "));
 

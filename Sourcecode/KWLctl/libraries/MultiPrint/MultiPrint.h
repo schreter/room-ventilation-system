@@ -34,7 +34,10 @@
 class MultiPrint : public Print
 {
 public:
-  MultiPrint(Print& s1, Print& s2) : s1_(s1), s2_(s2) {}
+  MultiPrint() {}
+
+  /// Set up printing to two streams.
+  void begin(Print& s1, Print& s2) { s1_ = &s1; s2_ = &s2; }
   virtual ~MultiPrint() {}
 
   virtual size_t write(uint8_t c);
@@ -43,6 +46,6 @@ public:
   virtual void flush();
 
 private:
-  Print& s1_;
-  Print& s2_;
+  Print* s1_ = nullptr;
+  Print* s2_ = nullptr;
 };
