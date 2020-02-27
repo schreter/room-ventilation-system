@@ -17,6 +17,8 @@ Topic                                          | Value (Unit)      | Description
 `d15/state/kwl/statusbits`                     | `0xEEEEIIVV`      | Status bits indicating overall system state (see below).
 `d15/state/kwl/fan1/speed`                     | #### (rpm)        | Speed of FAN1 (intake).
 `d15/state/kwl/fan2/speed`                     | #### (rpm)        | Speed of FAN2 (exhaust).
+`d15/state/kwl/dp1/pressure`                   | ###.# (Pa)        | Differential pressure on the heat exchange (intake).
+`d15/state/kwl/dp2/pressure`                   | ###.# (Pa)        | Differential pressure on the heat exchange (exhaust).
 `d15/state/kwl/aussenluft/temperatur`          | ###.## (ºC)       | Temperature of outside air.
 `d15/state/kwl/zuluft/temperatur`              | ###.## (ºC)       | Temperature of inlet air.
 `d15/state/kwl/abluft/temperatur`              | ###.## (ºC)       | Temperature of outlet air.
@@ -87,8 +89,12 @@ are currently defined:
 
 Sensor values for FAN1, FAN2 and temperature sensors are self-explanatory.
 
-Sensor values for DHT1, DHT2, CO2 and VOC sensors will be only communicated, if
+Sensor values for DP1, DP2, DHT1, DHT2, CO2 and VOC sensors will be only communicated, if
 respective sensors are actually installed.
+
+If differential pressure sensors are installed, then they can be used for
+the calibration via airflow (more exact than the calibration via fan speed
+alone).
 
 
 ## Ventilation Mode
