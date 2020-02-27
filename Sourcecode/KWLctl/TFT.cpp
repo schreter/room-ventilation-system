@@ -70,8 +70,6 @@ static constexpr unsigned long CALIBRATION_TIME = 8000;
 static int BASELINE_SMALL      = 0;
 /// Baseline for middle font.
 static int BASELINE_MIDDLE     = 0;
-/// Width of fan speed number.
-static int WIDTH_BIGNUMBER = 0;
 /// Height for number field.
 static int HEIGHT_NUMBER_FIELD = 0;
 
@@ -3593,7 +3591,7 @@ void TFT::loopTouch() noexcept
     int16_t ypos = int(map(tp.y, cal_->top_, cal_->bottom_, 0, tft_.height()));
 
     if (KWLConfig::serialDebugDisplay) {
-      Serial.print(F("Touch (xpos/ypos, tp.x/tp.y): "));
+      Serial.print(F("Touch (xpos/ypos, tp.x/tp.y/tp.z): "));
       Serial.print(xpos);
       Serial.print('/');
       Serial.print(ypos);
@@ -3601,6 +3599,8 @@ void TFT::loopTouch() noexcept
       Serial.print(tp.x);
       Serial.print('/');
       Serial.print(tp.y);
+      Serial.print('/');
+      Serial.print(tp.z);
       Serial.print(F(", ms="));
       Serial.println(time);
     }
@@ -3613,7 +3613,9 @@ void TFT::loopTouch() noexcept
   } else if (touch_in_progress_) {
     // released
     if (KWLConfig::serialDebugDisplay) {
-      Serial.print(F("Touch release: ms="));
+      Serial.print(F("Touch release: tp.z="));
+      Serial.print(tp.z);
+      Serial.print(F(", ms="));
       Serial.println(time);
     }
     touch_in_progress_ = false;
