@@ -217,6 +217,12 @@ public:
   static constexpr double StandardKwlFanPrecisionPercent    = 1.5;
   /// Nenndrehzahl Papst Lüfter lt Datenblatt 3200 U/min.
   static constexpr unsigned StandardNenndrehzahlFan         = 3200;
+  /// Nennluftdurchsatz in m^3/h (300 fuer Avent P300, 450 fuer Avent P450).
+  static constexpr unsigned StandardNennAirflow             = 300;
+  /// Luftdurchsatz für Standardlüftungsstufe Zuluft in m^3/h.
+  static constexpr unsigned StandardAirflowSetpointFan1     = 160;
+  /// Luftdurchsatz für Standardlüftungsstufe Abluft in m^3/h.
+  static constexpr unsigned StandardAirflowSetpointFan2     = 160;
   /// Mindestablufttemperatur für die Öffnung des Bypasses im Automatik Betrieb.
   static constexpr unsigned StandardBypassTempAbluftMin     =   24;
   /// Mindestaussenlufttemperatur für die Öffnung des Bypasses im Automatik Betrieb.
@@ -580,9 +586,13 @@ private:
   TouchCalibration touch_;            // 280..290
 
   // Fan RPM adjustment configuration
-  float Fan1ImpulsesPerRotation_;              // 290
-  float Fan2ImpulsesPerRotation_;              // 294
-  // 298
+  float Fan1ImpulsesPerRotation_;     // 290
+  float Fan2ImpulsesPerRotation_;     // 294
+
+  // Airflow setpoints in m^3/h for intake/outtake fans.
+  int AirflowSetpointFan1_;           // 298
+  int AirflowSetpointFan2_;           // 300
+  // 302
 
   /// Initialize with defaults, if version doesn't fit.
   void loadDefaults();
@@ -599,6 +609,8 @@ public:
   KWL_GETSET(SpeedSetpointFan2)
   KWL_GETSET(Fan1ImpulsesPerRotation)
   KWL_GETSET(Fan2ImpulsesPerRotation)
+  KWL_GETSET(AirflowSetpointFan1)
+  KWL_GETSET(AirflowSetpointFan2)
   KWL_GETSET(BypassTempAbluftMin)
   KWL_GETSET(BypassTempAussenluftMin)
   KWL_GETSET(BypassHystereseMinutes)

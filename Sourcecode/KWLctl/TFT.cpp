@@ -1266,6 +1266,34 @@ protected:
   }
 
   /*!
+   * @brief Update the header of an input field, e.g., after its meaning changed.
+   *
+   * @param row field row to update.
+   * @param header new header to display.
+   */
+  void updateInputFieldHeader(uint8_t row, const char* header)
+  {
+    const int y = INPUT_FIELD_YOFFSET + 1 + INPUT_FIELD_HEIGHT * (row - 1);
+    this->tft_.fillRect(18, y, input_x_ - 18, INPUT_FIELD_HEIGHT, colBackColor + DEBUG_HIGHLIGHT);
+    this->tft_.setTextColor(colFontColor, colBackColor);
+    this->tft_.setFont(&FreeSans12pt7b);
+    this->tft_.setCursor(18, y + 12 + BASELINE_SMALL);
+    this->tft_.print(header);
+  }
+
+  /*!
+   * @brief Update the header of an input field, e.g., after its meaning changed.
+   *
+   * @param row field row to update.
+   * @param header new header to display.
+   */
+  void updateInputFieldHeader(uint8_t row, const __FlashStringHelper* header)
+  {
+    updateInputFieldHeader(row, "");
+    this->tft_.print(header);
+  }
+
+  /*!
    * @brief Set up input field row.
    *
    * @param row input field row.
@@ -2013,8 +2041,10 @@ public:
   {
     // copy current state
     auto& config = getControl().getPersistentConfig();
-    setpoint_l1_ = config.getSpeedSetpointFan1();
-    setpoint_l2_ = config.getSpeedSetpointFan2();
+    setpoint_l1_rpm_ = config.getSpeedSetpointFan1();
+    setpoint_l2_rpm_ = config.getSpeedSetpointFan2();
+    setpoint_l1_m3_ = config.getAirflowSetpointFan1();
+    setpoint_l2_m3_ = config.getAirflowSetpointFan2();
     ipr_l1_in_ = ipr_l1_ = find_ipr_index(config.getFan1ImpulsesPerRotation());
     ipr_l2_in_ = ipr_l2_ = find_ipr_index(config.getFan2ImpulsesPerRotation());
     calculate_speed_mode_ = getControl().getFanControl().getCalculateSpeedMode();
@@ -2027,8 +2057,10 @@ protected:
     initBitmap(icon_fan_24x24);
 
     setupInputFieldColumns(260, 90);
-    setupInputFieldRow(1, 1, F("Normdrehzahl Zuluft:"));
-    setupInputFieldRow(2, 1, F("Normdrehzahl Abluft:"));
+    setupInputFieldRow(1, 1, calculate_speed_mode_ >= FanCalculateSpeedMode::DP_PROP ?
+                         F("Norm m^3/h Zuluft:") : F("Normdrehzahl Zuluft:"));
+    setupInputFieldRow(2, 1, calculate_speed_mode_ >= FanCalculateSpeedMode::DP_PROP ?
+                         F("Norm m^3/h Abluft:") : F("Normdrehzahl Abluft:"));
     setupInputFieldColumnWidth(3, 130);
     setupInputFieldRow(3, 1, F("Luefterregelung:"));
     setupInputFieldColumnWidth(4, 60);
@@ -2037,7 +2069,7 @@ protected:
     tft_.setFont(&FreeSans9pt7b);
     tft_.setTextColor(colFontColor, colBackColor);
     tft_.setCursor(18, 198 + BASELINE_MIDDLE);
-    tft_.print (F("Nach der Aenderung der Normdrehzahlen"));
+    tft_.print (F("Nach der Aenderung der Normeinstellungen"));
     tft_.setCursor(18, 216 + BASELINE_MIDDLE);
     tft_.print (F("der Luefter muessen diese kalibriert werden."));
     tft_.setCursor(18, 234 + BASELINE_MIDDLE);
@@ -2056,19 +2088,34 @@ protected:
       [this]() noexcept {
         switch (getCurrentRow()) {
           case 1:
-            setpoint_l1_ += 10;
-            if (setpoint_l1_ > FanRPM::MAX_RPM)
-              setpoint_l1_ = FanRPM::MAX_RPM;
+            if (calculate_speed_mode_ < FanCalculateSpeedMode::DP_PROP) {
+              setpoint_l1_rpm_ += 10;
+              if (setpoint_l1_rpm_ > FanRPM::MAX_RPM)
+                setpoint_l1_rpm_ = FanRPM::MAX_RPM;
+            } else {
+              setpoint_l1_m3_ += 5;
+              if (setpoint_l1_m3_ > int(KWLConfig::StandardNennAirflow))
+                setpoint_l1_m3_ = int(KWLConfig::StandardNennAirflow);
+            }
             break;
           case 2:
-            setpoint_l2_ += 10;
-            if (setpoint_l2_ > FanRPM::MAX_RPM)
-              setpoint_l2_ = FanRPM::MAX_RPM;
+            if (calculate_speed_mode_ < FanCalculateSpeedMode::DP_PROP) {
+              setpoint_l2_rpm_ += 10;
+              if (setpoint_l2_rpm_ > FanRPM::MAX_RPM)
+                setpoint_l2_rpm_ = FanRPM::MAX_RPM;
+            } else {
+              setpoint_l2_m3_ += 5;
+              if (setpoint_l2_m3_ > int(KWLConfig::StandardNennAirflow))
+                setpoint_l2_m3_ = int(KWLConfig::StandardNennAirflow);
+            }
             break;
           case 3:
-            if (calculate_speed_mode_ > FanCalculateSpeedMode::SPEED_PROP)
+            if (calculate_speed_mode_ > FanCalculateSpeedMode::SPEED_PROP) {
               calculate_speed_mode_ = static_cast<FanCalculateSpeedMode>(
                        static_cast<int8_t>(calculate_speed_mode_) - 1);
+              if (calculate_speed_mode_ == FanCalculateSpeedMode::SPEED_PID)
+                update_norm_fields(); // switched to RPM-based settings
+            }
             break;
           case 4:
             update_ipr((getCurrentColumn() == 0) ? ipr_l1_ : ipr_l2_, -1);
@@ -2081,22 +2128,39 @@ protected:
       [this]() noexcept {
         switch (getCurrentRow()) {
           case 1:
-            if (setpoint_l1_ > FanRPM::MIN_RPM + 10)
-              setpoint_l1_ -= 10;
-            else
-              setpoint_l1_ = FanRPM::MIN_RPM;
+            if (calculate_speed_mode_ < FanCalculateSpeedMode::DP_PROP) {
+              if (setpoint_l1_rpm_ > FanRPM::MIN_RPM + 10)
+                setpoint_l1_rpm_ -= 10;
+              else
+                setpoint_l1_rpm_ = FanRPM::MIN_RPM;
+            } else {
+              if (setpoint_l1_m3_ > 15)
+                setpoint_l1_m3_ -= 5;
+              else
+                setpoint_l1_m3_ = 10; // TODO what should be the min airflow?
+            }
             break;
           case 2:
-            if (setpoint_l2_ > FanRPM::MIN_RPM + 10)
-              setpoint_l2_ -= 10;
-            else
-              setpoint_l2_ = FanRPM::MIN_RPM;
+            if (calculate_speed_mode_ < FanCalculateSpeedMode::DP_PROP) {
+              if (setpoint_l2_rpm_ > FanRPM::MIN_RPM + 10)
+                setpoint_l2_rpm_ -= 10;
+              else
+                setpoint_l2_rpm_ = FanRPM::MIN_RPM;
+            } else {
+              if (setpoint_l2_m3_ > 15)
+                setpoint_l2_m3_ -= 5;
+              else
+                setpoint_l2_m3_ = 10; // TODO what should be the min airflow?
+            }
             break;
           case 3:
             if (calculate_speed_mode_ < (getControl().getAdditionalSensors().hasDP() ?
-                     FanCalculateSpeedMode::DP_PID : FanCalculateSpeedMode::SPEED_PID))
+                     FanCalculateSpeedMode::DP_PID : FanCalculateSpeedMode::SPEED_PID)) {
               calculate_speed_mode_ = static_cast<FanCalculateSpeedMode>(
                        static_cast<int8_t>(calculate_speed_mode_) + 1);
+              if (calculate_speed_mode_ == FanCalculateSpeedMode::DP_PROP)
+                update_norm_fields(); // switched to differential pressure settings
+            }
             break;
           case 4:
             update_ipr((getCurrentColumn() == 0) ? ipr_l1_ : ipr_l2_, +1);
@@ -2114,12 +2178,16 @@ protected:
             ipr_l1_in_ != ipr_l1_ ||
             ipr_l2_in_ != ipr_l2_;
         const bool speed_changed =
-            config.getSpeedSetpointFan1() != setpoint_l1_ ||
-            config.getSpeedSetpointFan2() != setpoint_l2_ ||
+            config.getSpeedSetpointFan1() != setpoint_l1_rpm_ ||
+            config.getSpeedSetpointFan2() != setpoint_l2_rpm_ ||
+            config.getAirflowSetpointFan1() != setpoint_l1_m3_ ||
+            config.getAirflowSetpointFan2() != setpoint_l2_m3_ ||
             ipr_changed;
         if (speed_changed) {
-          config.setSpeedSetpointFan1(setpoint_l1_);
-          config.setSpeedSetpointFan2(setpoint_l2_);
+          config.setSpeedSetpointFan1(setpoint_l1_rpm_);
+          config.setSpeedSetpointFan2(setpoint_l2_rpm_);
+          config.setAirflowSetpointFan1(setpoint_l1_m3_);
+          config.setAirflowSetpointFan2(setpoint_l2_m3_);
           if (ipr_changed) {
             config.setFan1ImpulsesPerRotation(get_ipr(ipr_l1_));
             config.setFan2ImpulsesPerRotation(get_ipr(ipr_l2_));
@@ -2131,7 +2199,7 @@ protected:
           getControl().getFanControl().setCalculateSpeedMode(calculate_speed_mode_);
           doPopup<ScreenSetupFan>(
             F("Einstellungen gespeichert"),
-            F("Nenndrehzahlen geaendert.\nBitte Kalibrierung starten."));
+            F("Nenneinstellungen geaendert.\nBitte Kalibrierung starten."));
         } else if (getControl().getFanControl().getCalculateSpeedMode() != calculate_speed_mode_) {
           getControl().getFanControl().setCalculateSpeedMode(calculate_speed_mode_);
           doPopup<ScreenSetup>(
@@ -2148,8 +2216,10 @@ protected:
       [this]() noexcept {
         resetInput();
         auto& config = getControl().getPersistentConfig();
-        config.setSpeedSetpointFan1(setpoint_l1_);
-        config.setSpeedSetpointFan2(setpoint_l2_);
+        config.setSpeedSetpointFan1(setpoint_l1_rpm_);
+        config.setSpeedSetpointFan2(setpoint_l2_rpm_);
+        config.setAirflowSetpointFan1(setpoint_l1_m3_);
+        config.setAirflowSetpointFan2(setpoint_l2_m3_);
         auto& fan = getControl().getFanControl();
         fan.setCalculateSpeedMode(calculate_speed_mode_);
         fan.speedCalibrationStart();
@@ -2164,21 +2234,38 @@ protected:
   {
     auto& config = getControl().getPersistentConfig();
     return
-        config.getSpeedSetpointFan1() != setpoint_l1_ ||
-        config.getSpeedSetpointFan2() != setpoint_l2_ ||
+        config.getSpeedSetpointFan1() != setpoint_l1_rpm_ ||
+        config.getSpeedSetpointFan2() != setpoint_l2_rpm_ ||
+        config.getAirflowSetpointFan1() != setpoint_l1_m3_ ||
+        config.getAirflowSetpointFan2() != setpoint_l2_m3_ ||
         ipr_l1_in_ != ipr_l1_ ||
         ipr_l2_in_ != ipr_l2_ ||
         getControl().getFanControl().getCalculateSpeedMode() != calculate_speed_mode_;
   }
 
 private:
+  void update_norm_fields()
+  {
+    if (calculate_speed_mode_ >= FanCalculateSpeedMode::DP_PROP) {
+      updateInputFieldHeader(1, F("Norm m^3/h Zuluft:"));
+      updateInputFieldHeader(2, F("Norm m^3/h Abluft:"));
+    } else {
+      updateInputFieldHeader(1, F("Normdrehzahl Zuluft:"));
+      updateInputFieldHeader(2, F("Normdrehzahl Abluft:"));
+    }
+    updateInputField(1, 0);
+    updateInputField(2, 0);
+  }
+
   virtual void input_field_draw(uint8_t row, uint8_t col) noexcept override
   {
     char buf[16];
     switch (row) {
       default:
-      case 1: snprintf_P(buf, sizeof(buf), PSTR("%u"), setpoint_l1_); break;
-      case 2: snprintf_P(buf, sizeof(buf), PSTR("%u"), setpoint_l2_); break;
+      case 1: snprintf_P(buf, sizeof(buf), PSTR("%u"), calculate_speed_mode_ >= FanCalculateSpeedMode::DP_PROP ?
+                           unsigned(setpoint_l1_m3_) : setpoint_l1_rpm_); break;
+      case 2: snprintf_P(buf, sizeof(buf), PSTR("%u"), calculate_speed_mode_ >= FanCalculateSpeedMode::DP_PROP ?
+                           unsigned(setpoint_l2_m3_) : setpoint_l2_rpm_); break;
       case 3: strcpy_P(buf, fanModeToString(calculate_speed_mode_)); break;
       case 4:
       {
@@ -2233,10 +2320,14 @@ private:
 
   /// Mode to calculate fan speed.
   FanCalculateSpeedMode calculate_speed_mode_;
-  /// Setpoint for intake fan.
-  unsigned setpoint_l1_;
-  /// Setpoint for exhaust fan.
-  unsigned setpoint_l2_;
+  /// Setpoint for intake fan in RPM.
+  unsigned setpoint_l1_rpm_;
+  /// Setpoint for exhaust fan in RPM.
+  unsigned setpoint_l2_rpm_;
+  /// Setpoint for intake fan in m^3/h.
+  int setpoint_l1_m3_;
+  /// Setpoint for exhaust fan in m^3/h.
+  int setpoint_l2_m3_;
   /// Multipier for intake fan.
   int8_t ipr_l1_;
   /// Multipier for exhaust fan.

@@ -32,7 +32,7 @@ IPAddressLiteral::operator IPAddress() const noexcept
 
 #define KWL_COPY(name) name##_ = KWLConfig::Standard##name
 
-static_assert(sizeof(KWLPersistentConfig) == 298, "Persistent config size changed, ensure compatibility or increment version");
+static_assert(sizeof(KWLPersistentConfig) == 302, "Persistent config size changed, ensure compatibility or increment version");
 static constexpr auto PrefixMQTT = KWLConfig::PrefixMQTT;
 
 void KWLPersistentConfig::loadDefaults()
@@ -41,6 +41,8 @@ void KWLPersistentConfig::loadDefaults()
 
   KWL_COPY(SpeedSetpointFan1);
   KWL_COPY(SpeedSetpointFan2);
+  KWL_COPY(AirflowSetpointFan1);
+  KWL_COPY(AirflowSetpointFan2);
   KWL_COPY(Fan1ImpulsesPerRotation);
   KWL_COPY(Fan2ImpulsesPerRotation);
   KWL_COPY(BypassTempAbluftMin);
@@ -147,6 +149,14 @@ void KWLPersistentConfig::migrate()
     Fan2ImpulsesPerRotation_ = KWLConfig::StandardFan2ImpulsesPerRotation;
     update(Fan1ImpulsesPerRotation_);
     update(Fan2ImpulsesPerRotation_);
+  }
+  if (AirflowSetpointFan1_ == -1) {
+    AirflowSetpointFan1_ = KWLConfig::StandardAirflowSetpointFan1;
+    update(AirflowSetpointFan1_);
+  }
+  if (AirflowSetpointFan2_ == -1) {
+    AirflowSetpointFan2_ = KWLConfig::StandardAirflowSetpointFan2;
+    update(AirflowSetpointFan2_);
   }
 }
 
