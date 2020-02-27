@@ -389,6 +389,8 @@ public:
   // ************************************** E N D E   M Q T T   R E P O R T I N G ***********************************************************************
 
   // ***************************************************  D E B U G E I N S T E L L U N G E N ********************************************************
+  // Serial port speed to configure at startup.
+  static constexpr uint32_t SerialSpeed = 57600;
   // Allgemeine Debugausgaben auf der seriellen Schnittstelle aktiviert.
   static constexpr bool serialDebug = false;
   // Debugausgaben für die Lüfter auf der seriellen Schnittstelle aktiviert.

@@ -74,7 +74,7 @@ static void loopWrite100Millis() {
 // *** SETUP START ***
 void setup()
 {
-  Serial.begin(57600); // Serielle Ausgabe starten
+  Serial.begin(KWLConfig::SerialSpeed); // Serielle Ausgabe starten
 
   // Timebase for PWM Signal
   //TCCR5B = (TCCR5B & 0xF8) | 0x02 ; // Timer 5, Divisor 8, Frequency 3.921 KHz
