@@ -61,6 +61,8 @@ namespace MQTTTopic
   constexpr auto CmdFansCalculateSpeedMode  = makeFlashStringLiteral("fans/calculatespeed");
   constexpr auto CmdFan1Speed               = makeFlashStringLiteral("fan1/standardspeed");
   constexpr auto CmdFan2Speed               = makeFlashStringLiteral("fan2/standardspeed");
+  constexpr auto CmdFan1Airflow             = makeFlashStringLiteral("fan1/standardairflow");
+  constexpr auto CmdFan2Airflow             = makeFlashStringLiteral("fan2/standardairflow");
   constexpr auto CmdGetSpeed                = makeFlashStringLiteral("fans/getspeed");
   constexpr auto CmdGetTemp                 = makeFlashStringLiteral("temperatur/gettemp");
   constexpr auto CmdGetvalues               = makeFlashStringLiteral("getvalues");

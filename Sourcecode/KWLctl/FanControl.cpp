@@ -510,6 +510,22 @@ bool FanControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
     unsigned i = unsigned(s.toInt());
     getFan2().setStandardSpeed(i);
     persistent_config_.setSpeedSetpointFan2(i);
+  } else if (topic == MQTTTopic::CmdFan1Airflow) {
+    // Airflow Lüfter 1
+    auto i = s.toInt();
+    if (i < 10)
+      i = 10;
+    else if (i > KWLConfig::StandardNennAirflow)
+      i = KWLConfig::StandardNennAirflow;
+    persistent_config_.setAirflowSetpointFan1(int(i));
+  } else if (topic == MQTTTopic::CmdFan2Airflow) {
+    // Airflow Lüfter 2
+    auto i = s.toInt();
+    if (i < 10)
+      i = 10;
+    else if (i > KWLConfig::StandardNennAirflow)
+      i = KWLConfig::StandardNennAirflow;
+    persistent_config_.setAirflowSetpointFan2(int(i));
   } else if (topic == MQTTTopic::CmdMode) {
     // KWL Stufe
     setVentilationMode(int(s.toInt()));
