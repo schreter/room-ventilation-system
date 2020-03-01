@@ -1,2 +1,18 @@
 *.orig
 *qbs*
+
+# PlatformIO project
+.pio
+.travis.yml
+
+# PlatformIO VS Code project
+.vscode
+
+# PlatformIO Eclipse project
+.cproject
+.project
+.settings
+
+# PlatformIO Qt Creator project
+platformio.pro
+

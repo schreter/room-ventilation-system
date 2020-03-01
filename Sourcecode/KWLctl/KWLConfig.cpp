@@ -144,11 +144,17 @@ void KWLPersistentConfig::migrate()
     touch_.reset();
     update(touch_);
   }
-  if (*reinterpret_cast<long*>(&Fan1ImpulsesPerRotation_) == -1) {
-    Fan1ImpulsesPerRotation_ = KWLConfig::StandardFan1ImpulsesPerRotation;
-    Fan2ImpulsesPerRotation_ = KWLConfig::StandardFan2ImpulsesPerRotation;
-    update(Fan1ImpulsesPerRotation_);
-    update(Fan2ImpulsesPerRotation_);
+  {
+    // we use a trick to read the float as long (both are 4B long) to test for all-ones
+    // (uninitialized space), so we can migrate the old configuration here.
+    void* fan1iprptr = &Fan1ImpulsesPerRotation_;
+    static_assert(sizeof(long) == sizeof(Fan1ImpulsesPerRotation_), "Mismatched sizes");
+    if (*reinterpret_cast<long*>(fan1iprptr) == -1) {
+      Fan1ImpulsesPerRotation_ = KWLConfig::StandardFan1ImpulsesPerRotation;
+      Fan2ImpulsesPerRotation_ = KWLConfig::StandardFan2ImpulsesPerRotation;
+      update(Fan1ImpulsesPerRotation_);
+      update(Fan2ImpulsesPerRotation_);
+    }
   }
   if (AirflowSetpointFan1_ == -1) {
     AirflowSetpointFan1_ = KWLConfig::StandardAirflowSetpointFan1;

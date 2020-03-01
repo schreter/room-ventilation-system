@@ -33,10 +33,16 @@ befinden sich ein paar [Screenshots](Screenshots/README.md).
 Im Verzeichnis Docs befindet sich weitere Dokumentation zu verschiedenen Themen.
 
 Um das Projekt zu bauen müssen folgende Voraussetzungen erfüllt sein:
-  - Folgende Libraries müssen installiert werden: SPI, EEPROM, PubSubClient,
+  - Folgende Libraries müssen in Arduino IDE installiert werden: SPI, EEPROM, PubSubClient,
     Adafruit_GFX_Library, DHT_sensor_library, PID, Adafruit_TouchScreen,
     DallasTemperature, Adafruit_Unified_Sensor, MCUFRIEND_kbv, OneWire,
     Wire, Ethernet
   - Das Projekt bringt eigene Libraries mit. Diese müssen ebenfalls installiert
     werden, am einfachsten als symbolische Links. Der Skript link_libs.sh
     linkt die Libraries an die (hoffentlich) richtige Stelle.
+
+Am einfachsten ist es jedoch, das Projekt mittels [PlatformIO](https://platformio.org)
+zu konfigurieren und zu bauen. Dann reicht `platformio run` um die Dependencies runterzuladen
+und das Projekt zu kompilieren, bzw. `platformio run -t upload` um es aufs Arduino hochzuladen.
+Desweiteren, mit `platformio project init --ide=<type>` kann man Projekte für verschiedene
+IDEs erstellen, um das Code komfortabel zu editieren (z.B., VS Code, Eclipse oder Qt Creator).

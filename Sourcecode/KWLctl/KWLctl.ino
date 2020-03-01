@@ -57,6 +57,7 @@ static KWLControl kwlControl;
 // Init tracer which prints to both TFT and Serial.
 static MultiPrint initTracer;
 
+#if 0
 static void loopWrite100Millis() {
   auto currentMillis = millis();
   static unsigned long previous100Millis = 0;
@@ -66,6 +67,7 @@ static void loopWrite100Millis() {
     Serial.println(long(currentMillis));
   }
 }
+#endif
 
 /**********************************************************************
   Setup Routinen

@@ -3751,7 +3751,6 @@ void TFT::setupDisplay() noexcept
 
 void TFT::setupTouch()
 {
-  uint16_t tmp;
   auto identifier = tft_.readID();
   ts_ = TouchScreen(KWLConfig::XP, KWLConfig::YP, KWLConfig::XM, KWLConfig::YM, 300);     //call the constructor AGAIN with new values.
 
