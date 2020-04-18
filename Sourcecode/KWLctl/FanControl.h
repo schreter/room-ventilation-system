@@ -136,7 +136,13 @@ private:
   void finishCalibration();
 
   /// Set debugging mode for this fan via MQTT.
-  inline void debug(bool on) { mqtt_send_debug_ = on; }
+  inline void debug(bool on) { mqtt_send_debug_ = on ? 1 : 0; }
+
+  /// Set debugging mode for this fan via MQTT (one-shot).
+  inline void debugOnce() {
+    if (!mqtt_send_debug_)
+      mqtt_send_debug_ = 2;
+  }
 
   /// Send MQTT debugging message, if on.
   void sendMQTTDebug(int id, unsigned long ts, MessageHandler& h);
@@ -155,7 +161,7 @@ private:
   int calibration_pwm_setpoint_[MAX_FAN_MODE_CNT];  ///< Temporary PWM values during calibration.
   int good_pwm_setpoint_[REQUIRED_GOOD_PWM_COUNT];  ///< PWM signal strength considered "good" during calibration.
   unsigned good_pwm_setpoint_count_ = 0;            ///< # of "good" PWM signal strengths we already know.
-  bool mqtt_send_debug_ = false;        ///< Send debugging info for this fan per MQTT.
+  uint8_t mqtt_send_debug_ = 0;         ///< Send debugging info for this fan per MQTT (0 off, 1 on, 2 send once).
   uint8_t pwm_pin_;                     ///< Pin to send PWM signa to.
   uint8_t tacho_pin_;                   ///< Pin to read tacho signal from.
   uint8_t fan_id_;                      ///< Fan ID (1 or 2).

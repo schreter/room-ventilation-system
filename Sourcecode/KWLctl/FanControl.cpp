@@ -278,6 +278,8 @@ void Fan::sendMQTTDebug(int id, unsigned long ts, MessageHandler& h)
 {
   if (!mqtt_send_debug_)
     return;
+  if (mqtt_send_debug_ > 1)
+    mqtt_send_debug_ = 0; // send once
 
   char buffer[100];
   static constexpr auto FORMAT = makeFlashStringLiteral("Fan%d - M: %lu, gap: %ld, tsf: %ld, ssf: %ld, rpm: %ld");
@@ -552,25 +554,31 @@ bool FanControl::mqttReceiveMsg(const StringView& topic, const StringView& s)
       fan1_.debug(true);
     else if (s == F("off"))
       fan1_.debug(false);
+    else
+      fan1_.debugOnce();
   } else if (topic == MQTTTopic::KwlDebugsetFan2Getvalues) {
     if (s == F("on"))
       fan2_.debug(true);
     else if (s == F("off"))
       fan2_.debug(false);
+    else
+      fan2_.debugOnce();
   } else if (topic == MQTTTopic::KwlDebugsetFan1PWM) {
     // update PWM value for the current state
-    if (ventilation_mode_ != 0) {
+    if (ventilation_mode_ != 0 && s.length() > 0) {
       int value = int(s.toInt());
       fan1_.debugSet(ventilation_mode_, value);
       speedUpdate();
     }
+    fan1_.debugOnce();
   } else if (topic == MQTTTopic::KwlDebugsetFan2PWM) {
     // update PWM value for the current state
-    if (ventilation_mode_ != 0) {
+    if (ventilation_mode_ != 0 && s.length() > 0) {
       int value = int(s.toInt());
       fan2_.debugSet(ventilation_mode_, value);
       speedUpdate();
     }
+    fan2_.debugOnce();
   } else if (topic == MQTTTopic::KwlDebugsetFanPWMStore) {
     // store calibration data in EEPROM
     storePWMSettingsToEEPROM();
