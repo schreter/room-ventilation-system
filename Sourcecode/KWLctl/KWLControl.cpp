@@ -32,6 +32,7 @@ KWLControl::KWLControl() :
   MessageHandler(F("KWLControl")),
   ntp_(udp_),
   network_client_(persistent_config_, ntp_),
+  add_sensors_(fan_control_),
   fan_control_(persistent_config_, this, add_sensors_),
   bypass_(persistent_config_, temp_sensors_),
   antifreeze_(fan_control_, temp_sensors_, persistent_config_),

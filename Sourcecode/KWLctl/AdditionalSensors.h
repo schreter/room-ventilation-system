@@ -30,6 +30,7 @@
 #include <math.h>
 
 class Print;
+class FanControl;
 
 /*!
  * @brief Additional sensors of the ventilation system (optional).
@@ -40,7 +41,12 @@ class Print;
 class AdditionalSensors : private MessageHandler
 {
 public:
-  AdditionalSensors();
+  /*!
+   * @brief Construct additional sensor class.
+   *
+   * @param fan fan control to inform when differential pressure is read (for calibration).
+   */
+  explicit AdditionalSensors(FanControl& fan);
 
   /// Initialize sensors.
   void begin(Print& initTracer);
@@ -128,6 +134,8 @@ private:
   void sendDP(bool force) noexcept;
 
   virtual bool mqttReceiveMsg(const StringView& topic, const StringView& s) override;
+
+  FanControl& fan_;
 
   // sensor availability
   bool DHT1_available_ = false;

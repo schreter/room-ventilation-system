@@ -21,6 +21,7 @@
 #include "AdditionalSensors.h"
 #include "KWLConfig.h"
 #include "MessageHandler.h"
+#include "FanControl.h"
 #include "MQTTTopic.hpp"
 #include "SDP8xx.h"
 
@@ -53,8 +54,8 @@ static constexpr unsigned long INTERVAL_DHT_READ              = 10000000;
 static constexpr unsigned long INTERVAL_MHZ14_READ            = 10000000;
 /// Time between VOC sensor readings (1s).
 static constexpr unsigned long INTERVAL_TGS2600_READ          =  1000000;
-/// Time between pressure sensor readings (1s).
-static constexpr unsigned long INTERVAL_DP_READ               =  1000000;
+/// Time between pressure sensor readings (1s + 10ms to ensure fan PID regulator picks up new values).
+static constexpr unsigned long INTERVAL_DP_READ               =  1010000;
 
 /// Minimum time between communicating DHT values.
 static constexpr unsigned long INTERVAL_MQTT_DHT              =  5000000;
@@ -153,8 +154,9 @@ static int calcSensor_VOC(int valr)
 // ----------------------------- TGS2600 END --------------------------------
 
 
-AdditionalSensors::AdditionalSensors() :
+AdditionalSensors::AdditionalSensors(FanControl& fan) :
   MessageHandler(F("AdditionalSensors")),
+  fan_(fan),
   stats_(F("AdditionalSensors")),
   dht1_read_(stats_, &AdditionalSensors::readDHT1, *this),
   dht2_read_(stats_, &AdditionalSensors::readDHT2, *this),
@@ -320,6 +322,8 @@ void AdditionalSensors::readDP()
   dp1.read(dp1_, temp1);
   tcaselect(1);
   dp2.read(dp2_, temp2);
+  // tell fan control that differential pressure has been read
+  fan_.differentialPressureMeasured(dp1_, dp2_);
   if (KWLConfig::serialDebugSensor) {
     Serial.print(F("DP1 P="));
     Serial.print(dp1_);

@@ -33,8 +33,8 @@ static FanControl* instance_ = nullptr;
 
 // MQTT timing:
 
-/// Interval for scheduling fan regulation (1s)
-static constexpr unsigned long FAN_INTERVAL = 1000000;
+/// Interval for scheduling fan regulation (1s + 10ms to ensure that PID regulator picks up new values)
+static constexpr unsigned long FAN_INTERVAL = 1010000;
 /// Interval for sending fan information (5s), if speed changed.
 static constexpr unsigned long FAN_MQTT_INTERVAL = 5000000;
 /// Interval for sending fan information unconditionally (2min).
@@ -415,6 +415,12 @@ void FanControl::speedCalibrationStart() {
   calibration_pwm_in_progress_ = false;
   calibration_in_progress_ = false;
   mode_ = FanMode::Calibration;
+}
+
+void FanControl::differentialPressureMeasured(float dp1, float dp2)
+{
+  // TODO if fans are regulated via DP_PID, adjust speed here
+  // TODO If DP calibration is in progress, do calibration step here
 }
 
 void FanControl::speedCalibrationStep()

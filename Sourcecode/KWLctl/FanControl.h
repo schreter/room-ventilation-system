@@ -244,6 +244,17 @@ public:
   /// Get current ventilation mode for which the calibration runs.
   inline int getVentilationCalibrationMode() { return current_calibration_mode_; }
 
+  /*!
+   * @brief Callback called when differential pressure has been measured.
+   *
+   * This method is called by DP sensor reading after DP sensor has been read.
+   * When DP-based calibration is in progress (either calibration or PID-based
+   * regulator), then the new fan speed computation is triggered from here.
+   *
+   * @param dp1,dp2 differential pressures for intake and exhaust fans.
+   */
+  void differentialPressureMeasured(float dp1, float dp2);
+
 private:
   static void countUpFan1();
   static void countUpFan2();
